@@ -7,6 +7,7 @@ import java.net.UnknownHostException;
 
 import com.MobileAnarchy.Android.Widgets.Joystick.DualJoystickView;
 import com.MobileAnarchy.Android.Widgets.Joystick.JoystickMovedListener;
+import com.ebarch.ipgamepad.R.id;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -20,10 +21,10 @@ import android.content.SharedPreferences;
 
 public class IPGamepad extends Activity {
     
-    private SharedPreferences preferences;
+    protected SharedPreferences preferences;
     
     private NetworkingThread networkThread;
-    private DatagramSocket udpSocket;
+    protected DatagramSocket udpSocket;
     private InetAddress ipAddress;
     private int packetRate;
     private int port;
@@ -75,21 +76,19 @@ public class IPGamepad extends Activity {
 	}
     
 	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		startActivity(new Intent(this, Preferences.class));
+	public boolean onOptionsItemSelected(MenuItem item) {	
+		startActivity(new Intent(this, Preferences.class));		
 		return true;
 	}
 	
 	private JoystickMovedListener _listenerLeft = new JoystickMovedListener() {
 
-		@Override
 		public void OnMoved(int pan, int tilt) {
 			leftX = pan;
 			leftY = tilt;
 			leftActive = true;
 		}
 
-		@Override
 		public void OnReleased() {
 			leftActive = false;
 		}
@@ -101,14 +100,14 @@ public class IPGamepad extends Activity {
 	
     private JoystickMovedListener _listenerRight = new JoystickMovedListener() {
 
-    	@Override
+    	
 		public void OnMoved(int pan, int tilt) {
     		rightX = pan;
 			rightY = tilt;
 			rightActive = true;
 		}
 
-		@Override
+		
 		public void OnReleased() {
 			rightActive = false;
 		}
