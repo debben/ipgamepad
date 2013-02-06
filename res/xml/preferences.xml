@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen
   xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="Accelerometer Settings">
+        <Preference android:title="Z Max" android:key="z_max" android:defaultValue="1000"/>
+        <Preference android:title="Y Max" android:key="y_max" android:defaultValue="1000"/>
+        <Preference android:key="z_buf" android:title="Z Buffer" android:defaultValue="0"/>
+        <Preference android:title="Y Buffer" android:key="y_buf" android:defaultValue="0"/>        
+    </PreferenceCategory>
     <PreferenceCategory android:title="Network Settings">
     	<CheckBoxPreference android:defaultValue="false" android:title="Aux Byte" android:summary="Enable/Disable Aux Byte" android:key="auxbyte" android:summaryOn="Enabled" android:summaryOff="Disabled"></CheckBoxPreference>
         <EditTextPreference android:key="ipaddress" android:title="IP Address" android:summary="IP to send controller data" android:defaultValue="192.168.1.22"></EditTextPreference>
         <EditTextPreference android:key="port" android:title="Port" android:summary="Port to send controller data" android:defaultValue="4444"></EditTextPreference>
-        <EditTextPreference android:key="txinterval" android:title="Packet Tx Interval" android:summary="Value (in ms) of packet xmit" android:defaultValue="25"></EditTextPreference>
+        <EditTextPreference android:key="txinterval" android:title="Packet Tx Interval" android:summary="Value (in ms) of packet xmit" android:defaultValue="25"></EditTextPreference>        
     </PreferenceCategory>
 </PreferenceScreen>

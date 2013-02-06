@@ -63,6 +63,7 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 	private float[] gravity = new float[3];
 	private float[] linear_acceleration = new float[3];
 	
+	protected PacketStruct packetStruct;
 	
 	private WifiManager wifiManage;
 	boolean mExternalStorageAvailable = false;
@@ -72,39 +73,42 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
     public void onCreate(Bundle savedInstanceState) 
     {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.driver_view);
         
-        //setup wifi settings
+        // Initialize preferences
+		preferences = PreferenceManager.getDefaultSharedPreferences(this);
         
-        wifiManage = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        acc = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-                
-        //locate controls
-        throtle = (TextView) findViewById(id.throtle_text);
-        steering = (TextView) findViewById(id.steering_text);
+ 
+        	
+        	setContentView(getLayoutInflater().inflate(R.layout.driver_view,null));        	
+
+        
         
         z_max = (SeekBar) findViewById(id.z_max);
         y_max = (SeekBar) findViewById(id.y_max);
         z_buf = (SeekBar) findViewById(id.z_buff);
         y_buf = (SeekBar) findViewById(id.y_buff);
+    	
+		//set default values
+        z_max.setProgress(preferences.getInt("z_max", 1000));
+        y_max.setProgress(preferences.getInt("y_max", 1000));
+        z_buf.setProgress(preferences.getInt("z_buf", 0));
+        y_buf.setProgress(preferences.getInt("y_buf", 0));
         
         //configure listeners       
         z_max.setOnSeekBarChangeListener(this);
         y_max.setOnSeekBarChangeListener(this);
         z_buf.setOnSeekBarChangeListener(this);
         y_buf.setOnSeekBarChangeListener(this);
-               
-        // Initialize preferences
-		preferences = PreferenceManager.getDefaultSharedPreferences(this);
-
-		//set default values
-        z_max.setProgress(preferences.getInt("z_max", 1000));
-        y_max.setProgress(preferences.getInt("y_max", 1000));
-        z_buf.setProgress(preferences.getInt("z_buf", 0));
-        y_buf.setProgress(preferences.getInt("y_buf", 0));
-		
-		
+        
+        //locate controls
+        throtle = (TextView) findViewById(id.throtle_text);
+        steering = (TextView) findViewById(id.steering_text);
+        //setup wifi settings
+        packetStruct = new PacketStruct();
+        wifiManage = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        acc = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+                
 		
         // Setup the networking
         try {
@@ -121,7 +125,12 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 		
 	}
 
-	
+    public synchronized void startNetworkingThread(){
+        if(networkThread == null){       
+                networkThread = new SerializedNetworkingThread(this);
+                networkThread.start();
+        }
+    }
 	
 	public void onSensorChanged(SensorEvent event) {
 		// In this example, alpha is calculated as t / (t + dT),
@@ -151,58 +160,60 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 			//acc_y.setText("y: " + (int) (100 * gravity[1]));
 			//acc_z.setText("z: " + (int) (100 * gravity[2]));
 			
-			int throtle = (int) (100 * gravity[2]);
-			int steering = (int) (100 * gravity[1]);
+			packetStruct.throttle = (int) (100 * gravity[2]);
+			packetStruct.steering = (int) (100 * gravity[1]);
 			
-			if(throtle <= z_buf.getProgress() && throtle >= 0-z_buf.getProgress()){
-				throtle =0;
+			if(packetStruct.throttle <= z_buf.getProgress() && packetStruct.throttle >= 0-z_buf.getProgress()){
+				packetStruct.throttle =0;
 			}
-			else if(throtle >= z_max.getProgress() || throtle <= 0-z_max.getProgress()){
-				throtle = 1000;
+			else if(packetStruct.throttle >= z_max.getProgress() || packetStruct.throttle <= 0-z_max.getProgress()){
+				packetStruct.throttle = 1000;
 			}
 			else //scale
 			{
 				int temp=0;
-				if(throtle>0){
-					temp = throtle - z_buf.getProgress();					
+				if(packetStruct.throttle>0){
+					temp = packetStruct.throttle - z_buf.getProgress();					
 				}
 				else{
-					temp = throtle + z_buf.getProgress();
+					temp = packetStruct.throttle + z_buf.getProgress();
 				}
 				temp *= z_max.getProgress() - z_buf.getProgress();
 				temp /= 1000;
-				throtle = temp;
+				packetStruct.throttle = temp;
 			}
 			
 			
 			
-			if(steering <= y_buf.getProgress() && steering >= 0-y_buf.getProgress()){
-				steering =0;
+			if(packetStruct.steering <= y_buf.getProgress() && packetStruct.steering >= 0-y_buf.getProgress()){
+				packetStruct.steering =0;
 			}
-			else if(steering >= y_max.getProgress() || steering <= 0-y_max.getProgress()){
-				steering = 1000;
+			else if(packetStruct.steering >= y_max.getProgress() || packetStruct.steering <= 0-y_max.getProgress()){
+				packetStruct.steering = 1000;
 			}
 			else //scale
 			{
 				int temp=0;
-				if(steering>0){
-					temp = steering - y_buf.getProgress();					
+				if(packetStruct.steering>0){
+					temp = packetStruct.steering - y_buf.getProgress();					
 				}
 				else{
-					temp = steering + y_buf.getProgress();
+					temp = packetStruct.steering + y_buf.getProgress();
 				}
 				temp *= y_max.getProgress() - y_buf.getProgress();
 				temp /= 1000;
-				steering = temp;
+				packetStruct.steering = temp;
 			}
 			
-			DriverPad.this.throtle.setText("Throtle: " + throtle/10 + "%");
-			DriverPad.this.steering.setText("steering: " + steering/10 + "%");
+			DriverPad.this.throtle.setText("Throtle: " + packetStruct.throttle/10 + "%");
+			DriverPad.this.steering.setText("steering: " + packetStruct.steering/10 + "%");
+						
 		}
 	};
 	protected String preSharedKey;
 	protected JSONObject flattened;
 	protected FileWriter output;
+	public boolean enabled = false;
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -210,6 +221,9 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 			startActivity(new Intent(this, Preferences.class));
 		else if(item.getItemId() == id.WifiMenu)
 			writeWifiPreferences();
+		else if(item.getItemId() == id.toggle_enable){
+			enabled = !enabled;
+		}
 		return true;
 	}
 	
@@ -413,7 +427,7 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 			default:
 				return;
 		}
-		preferences.edit().putInt(pref, progress);
+		preferences.edit().putInt(pref, progress).commit();
 	}
 
 	public void onStartTrackingTouch(SeekBar seekBar) {

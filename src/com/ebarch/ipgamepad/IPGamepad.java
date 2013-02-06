@@ -1,6 +1,5 @@
 package com.ebarch.ipgamepad;
 
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -23,14 +22,22 @@ public class IPGamepad extends Activity {
     
     protected SharedPreferences preferences;
     
-    private NetworkingThread networkThread;
+    protected NetworkingThread networkThread;
     protected DatagramSocket udpSocket;
-    private InetAddress ipAddress;
-    private int packetRate;
-    private int port;
-    private boolean auxbyte;
-    private boolean leftActive, rightActive = false;
-    private int leftX, leftY, rightX, rightY = 0;
+    InetAddress ipAddress;
+    int packetRate;
+    int port;
+    boolean auxbyte;
+    boolean leftActive;
+
+	boolean rightActive = false;
+    protected int leftX;
+
+	protected int leftY;
+
+	protected int rightX;
+
+	protected int rightY = 0;
 	
 	private DualJoystickView joystick;
 	
@@ -117,49 +124,7 @@ public class IPGamepad extends Activity {
 		};
 	};
     
-    /* The main networking thread that sends the joystick UDP packets */
-    class NetworkingThread extends Thread {
-        private volatile boolean stop = false;
-
-        public void run() {
-                while (!stop) {
-                	if (leftActive || rightActive) {
-                		// Robot is enabled - let's send some data
-    		    		try {
-    		    			// A packet contains 5 bytes - leftJoystickY, leftJoystickX, rightJoystickY, rightJoystickX, Aux Byte
-    		    			byte auxByte;
-    		    			
-    		    			// Aux byte can be used for things you'd like to enable/disable on a robot such as headlights or relays
-    		    			if (auxbyte)
-    		    				auxByte = (byte) 255;
-    		    			else
-    		    				auxByte = (byte) 0;
-    		    			
-    						byte[] buf = new byte[] { mapJoystick(leftY), mapJoystick(leftX), mapJoystick(rightY), mapJoystick(rightX), auxByte };
-    						DatagramPacket p = new DatagramPacket(buf, buf.length, ipAddress, port);
-    						udpSocket.send(p);
-    					} catch (Exception e) {}
-    					try {
-    						Thread.sleep(packetRate);
-    					}
-    					catch (InterruptedException e) {}
-    	    		}
-    	    		else {
-    	    			// Robot is disabled - wait a little bit before trying again
-    	    			try {
-    						Thread.sleep(packetRate);
-    					}
-    					catch (InterruptedException e) {}
-    	    		}
-                }
-        }
-
-        public synchronized void requestStop() {
-                stop = true;
-        }
-    }
-    
-    private static byte mapJoystick(int input) {
+    static byte mapJoystick(int input) {
     	int result = (int)mapValue((double)input, -150, 150, 0, 255);
     	
     	if (result < 0)
@@ -177,7 +142,7 @@ public class IPGamepad extends Activity {
     /* Call this to start the main networking thread */
     public synchronized void startNetworkingThread(){
         if(networkThread == null){       
-                networkThread = new NetworkingThread();
+                networkThread = new NetworkingThread(this);
                 networkThread.start();
         }
     }
