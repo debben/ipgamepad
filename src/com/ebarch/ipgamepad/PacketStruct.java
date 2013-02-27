@@ -11,15 +11,17 @@ public class PacketStruct {
 	public byte[] writeObject(){
 		byte[] retVal = new byte[4];
 		
-		//big endian
+		//do not use big endian. Chip kit uses little endian.
+		//Yeah it's a bitch, but it's better we do a bit of 
+		//work here in JavaLand so we save time on the kit.
 		
 		//pack throttle
-		retVal[0] = (byte) ((throttle & 0xFF00) >> 8);
-		retVal[1] = (byte) ((throttle & 0xFF));
+		retVal[1] = (byte) ((throttle & 0xFF00) >> 8);
+		retVal[0] = (byte) ((throttle & 0xFF));
 		
 		//pack steering
-		retVal[2] = (byte) ((steering & 0xFF00) >> 8);
-		retVal[3] = (byte) ((steering & 0xFF));
+		retVal[3] = (byte) ((steering & 0xFF00) >> 8);
+		retVal[2] = (byte) ((steering & 0xFF));
 		return retVal;
 	}
 }
