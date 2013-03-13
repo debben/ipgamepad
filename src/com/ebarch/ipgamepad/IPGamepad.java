@@ -2,6 +2,7 @@ package com.ebarch.ipgamepad;
 
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 
 import com.MobileAnarchy.Android.Widgets.Joystick.DualJoystickView;
@@ -10,6 +11,7 @@ import com.ebarch.ipgamepad.R.id;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -21,7 +23,7 @@ import android.content.SharedPreferences;
 public class IPGamepad extends Activity {
     
     protected SharedPreferences preferences;
-    
+    protected Handler mHandler = new Handler();
     protected NetworkingThread networkThread;
     protected DatagramSocket udpSocket;
     InetAddress ipAddress;
@@ -56,8 +58,10 @@ public class IPGamepad extends Activity {
         
         // Setup the networking
         try {
-        	udpSocket = new DatagramSocket();
         	updateNetworking();
+        	udpSocket = new DatagramSocket(port);
+        	
+        	
         }
         catch (Exception e) {
         	// Networking exception
@@ -69,7 +73,14 @@ public class IPGamepad extends Activity {
     	try {
 			ipAddress = InetAddress.getByName(preferences.getString("ipaddress", "192.168.1.22"));
 			port = Integer.parseInt(preferences.getString("port", "4444"));
-			packetRate = Integer.parseInt(preferences.getString("txinterval", "20"));
+			packetRate = Integer.parseInt(preferences.getString("txinterval", "20"));			
+			try {
+				udpSocket = new DatagramSocket(port);
+				udpSocket.setSoTimeout(packetRate);
+			} catch (SocketException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
     	} catch (UnknownHostException e) {
     		// Networking exception
     	}
@@ -123,6 +134,10 @@ public class IPGamepad extends Activity {
 			rightActive = false;
 		};
 	};
+
+	public int odometer;
+
+	public int period;
     
     static byte mapJoystick(int input) {
     	int result = (int)mapValue((double)input, -150, 150, 0, 255);
@@ -176,4 +191,10 @@ public class IPGamepad extends Activity {
     	// Begin Ethernet communications
     	startNetworkingThread();
     }
+
+	public void updateOdometry() {
+		// TODO Auto-generated method stub
+		
+		
+	}
 }

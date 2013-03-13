@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.util.BitSet;
 
+import org.codeandmagic.android.gauge.GaugeView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,32 +33,34 @@ import android.os.Handler;
 import android.os.Parcel;
 import android.preference.PreferenceManager;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.LinearLayout.LayoutParams;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
-public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekBarChangeListener
-{
+import android.os.PowerManager;
+
+public class DriverPad extends IPGamepad implements SensorEventListener, OnCheckedChangeListener, android.view.View.OnClickListener {
 	private Handler mHandler = new Handler(); 
 	private SensorManager mSensorManager;
 	
-	private TextView throtle;
-	private TextView steering;
 	
-	private SeekBar z_max;
-	private SeekBar y_max;
-	private SeekBar z_buf;
-	private SeekBar y_buf;
-	
-	private String LOG = "AUTONOMOUS";
+	public static String LOG = "AUTONOMOUS";
 	
 	private Sensor acc;
 	private float[] gravity = new float[3];
@@ -70,49 +73,70 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 	boolean mExternalStorageWriteable = false;
 	String state = Environment.getExternalStorageState();
 	
+	//load preffs into ints
+	int zmax,zbuf,ymax,ybuf;
+	private GaugeView mSpeedometer, mTachometer;
+	
+	private ToggleButton mLeftSig, mRightSig;
+	
+	TextView unitLabel = null;
+	
+	Switch stereoPower = null;
+	
+	Button prev,next;
+	
+	private PowerManager pm;
+	private PowerManager.WakeLock wl;
+	
     public void onCreate(Bundle savedInstanceState) 
     {
         super.onCreate(savedInstanceState);
         
         // Initialize preferences
 		preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        
- 
         	
-        	setContentView(getLayoutInflater().inflate(R.layout.driver_view,null));        	
+       	setContentView(getLayoutInflater().inflate(R.layout.driver_view,null));        	
 
-        
-        
-        z_max = (SeekBar) findViewById(id.z_max);
-        y_max = (SeekBar) findViewById(id.y_max);
-        z_buf = (SeekBar) findViewById(id.z_buff);
-        y_buf = (SeekBar) findViewById(id.y_buff);
-    	
-		//set default values
-        z_max.setProgress(preferences.getInt("z_max", 1000));
-        y_max.setProgress(preferences.getInt("y_max", 1000));
-        z_buf.setProgress(preferences.getInt("z_buf", 0));
-        y_buf.setProgress(preferences.getInt("y_buf", 0));
-        
-        //configure listeners       
-        z_max.setOnSeekBarChangeListener(this);
-        y_max.setOnSeekBarChangeListener(this);
-        z_buf.setOnSeekBarChangeListener(this);
-        y_buf.setOnSeekBarChangeListener(this);
-        
-        //locate controls
-        throtle = (TextView) findViewById(id.throtle_text);
-        steering = (TextView) findViewById(id.steering_text);
         //setup wifi settings
         packetStruct = new PacketStruct();
         wifiManage = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         acc = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-                
-		
+        
+        //find controls
+        mSpeedometer = (GaugeView) findViewById(R.id.speedometer);
+        mTachometer = (GaugeView) findViewById(R.id.tachometer);
+        
+        mLeftSig = (ToggleButton) findViewById(R.id.left_sig);
+        mRightSig = (ToggleButton) findViewById(R.id.right_sig);
+        
+        mLeftSig.setOnCheckedChangeListener(this);
+        mRightSig.setOnCheckedChangeListener(this);
+        
+
+        unitLabel = (TextView) findViewById(R.id.unitLabel);
+        
+        stereoPower = (Switch) findViewById(R.id.stereo_select);
+        prev = (Button) findViewById(R.id.btnPrev);
+        next = (Button) findViewById(R.id.btnNext);
+        
+        stereoPower.setOnCheckedChangeListener(this);
+        prev.setOnClickListener(this);
+        next.setOnClickListener(this);
+        
+        
+        zmax = Integer.parseInt(preferences.getString("z_max", "1000"));
+        ymax = Integer.parseInt(preferences.getString("y_max", "1000"));
+        zbuf = Integer.parseInt(preferences.getString("z_buf", "0"));
+        ybuf = Integer.parseInt(preferences.getString("y_buf", "0"));
+        
+        //wake lock
+        pm = (PowerManager) getApplicationContext().getSystemService(Context.POWER_SERVICE);
+        wl = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, LOG);        
+        
+        
         // Setup the networking
-        try {
-        	udpSocket = new DatagramSocket();
+        try {        	
         	updateNetworking();
         }
         catch (Exception e) {
@@ -163,57 +187,84 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 			packetStruct.throttle = (int) (100 * gravity[2]);
 			packetStruct.steering = (int) (100 * gravity[1]);
 			
-			if(packetStruct.throttle <= z_buf.getProgress() && packetStruct.throttle >= 0-z_buf.getProgress()){
+			if(packetStruct.throttle <= zbuf && packetStruct.throttle >= 0-zbuf){
 				packetStruct.throttle =0;
 			}
-			else if(packetStruct.throttle >= z_max.getProgress() || packetStruct.throttle <= 0-z_max.getProgress()){
-				packetStruct.throttle = 1000;
+			else if(packetStruct.throttle >= zmax || packetStruct.throttle <= 0-zmax){
+				packetStruct.throttle = (packetStruct.throttle < 0 ? -1000 : 1000);
 			}
 			else //scale
 			{
 				int temp=0;
 				if(packetStruct.throttle>0){
-					temp = packetStruct.throttle - z_buf.getProgress();					
+					temp = packetStruct.throttle - zbuf;					
 				}
 				else{
-					temp = packetStruct.throttle + z_buf.getProgress();
+					temp = packetStruct.throttle + zbuf;
 				}
-				temp *= z_max.getProgress() - z_buf.getProgress();
+				temp *= zmax - zbuf;
 				temp /= 1000;
 				packetStruct.throttle = temp;
+
 			}
+
 			
 			
 			
-			if(packetStruct.steering <= y_buf.getProgress() && packetStruct.steering >= 0-y_buf.getProgress()){
+			if(packetStruct.steering <= ybuf && packetStruct.steering >= 0-ybuf){
 				packetStruct.steering =0;
 			}
-			else if(packetStruct.steering >= y_max.getProgress() || packetStruct.steering <= 0-y_max.getProgress()){
-				packetStruct.steering = 1000;
+			else if(packetStruct.steering >= ymax || packetStruct.steering <= 0-ymax){
+				packetStruct.steering = (packetStruct.steering < 0 ? -1000 : 1000);
 			}
 			else //scale
 			{
 				int temp=0;
 				if(packetStruct.steering>0){
-					temp = packetStruct.steering - y_buf.getProgress();					
+					temp = packetStruct.steering - ybuf;					
 				}
 				else{
-					temp = packetStruct.steering + y_buf.getProgress();
+					temp = packetStruct.steering + ybuf;
 				}
-				temp *= y_max.getProgress() - y_buf.getProgress();
+				temp *= ymax - ybuf;
 				temp /= 1000;
 				packetStruct.steering = temp;
 			}
 			
-			DriverPad.this.throtle.setText("Throtle: " + packetStruct.throttle/10 + "%");
-			DriverPad.this.steering.setText("steering: " + packetStruct.steering/10 + "%");
-						
+			//first check for cruise
+			if(packetStruct.throttle <=0){
+				cruise = 0;
+				//TODO: MAKE TOAST ABOUT CRUISE CONTROL.
+			}
+			if(cruise > 0){
+				//for now, just make this a throttle set-point.
+				packetStruct.throttle = cruise;
+				
+			}
+			
+
+			if(mTachometer != null){
+				
+				
+				mTachometer.setTargetValue(packetStruct.throttle/10);
+			}
+									
 		}
 	};
+	
+	int map(int lowIn, int highIn, int lowOut, int highOut, int value)
+	{
+		return (((highOut - lowOut) * value)/(highIn - lowIn)) + ((highOut-lowOut)/2);
+		//packetStruct.steering  = map(ybuf,ymax,-1000,1000,packetStruct.steering);
+	}
+	
 	protected String preSharedKey;
 	protected JSONObject flattened;
 	protected FileWriter output;
 	public boolean enabled = false;
+	private int cruise;
+	private String unitString;
+	protected boolean useFPS;
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -223,6 +274,7 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 			writeWifiPreferences();
 		else if(item.getItemId() == id.toggle_enable){
 			enabled = !enabled;
+
 		}
 		return true;
 	}
@@ -359,7 +411,7 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 						complete = false;
 						showWPAInput();						
 					}
-					else if(!config.preSharedKey.equals("")){
+					else if(config.preSharedKey != null && !config.preSharedKey.equals("")){
 						preSharedKey = config.preSharedKey.substring(0,config.preSharedKey.length()-1);
 					}
 					if(config.wepKeys != null && config.wepKeys.length > 0){
@@ -393,14 +445,82 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 	@Override
 	protected void onPause() {
 	  super.onPause();
+	  wl.release();
 	  mSensorManager.unregisterListener(this);	  
 	}
 	
-	  @Override
+	@Override
+	public boolean dispatchKeyEvent(KeyEvent event){
+		int action = event.getAction();
+		int keyCode = event.getKeyCode();
+		
+		switch(keyCode){
+			case KeyEvent.KEYCODE_VOLUME_UP:				
+				if(action == KeyEvent.ACTION_DOWN){
+					changeCruise(1);
+				}
+				return true;
+			case KeyEvent.KEYCODE_VOLUME_DOWN:
+				if(action == KeyEvent.ACTION_DOWN){
+					changeCruise(-1);
+				}
+				return true;
+			default:
+				return super.dispatchKeyEvent(event);
+		}		
+	}
+	
+	  private void changeCruise(int i) {
+		cruise += i;
+		if(cruise < 0){
+			cruise=0;
+		}
+		//post a toast message about it.
+		//Toast t = Toast.makeText(getApplicationContext(), "Cruise changed to " + cruise + " " + unitString, Toast.LENGTH_SHORT);
+		//t.show();		
+	}
+
+	@Override
 	  protected void onResume() {
 	    super.onResume();
+	    
+	    wl.acquire();
+	    
 	    mSensorManager.registerListener(this, acc, SensorManager.SENSOR_DELAY_NORMAL);
 	    checkSDCard();
+	    
+	    if(preferences != null){
+		    //reset params
+		    zmax = Integer.parseInt(preferences.getString("z_max", "1000"));
+	        ymax = Integer.parseInt(preferences.getString("y_max", "1000"));
+	        zbuf = Integer.parseInt(preferences.getString("z_buf", "0"));
+	        ybuf = Integer.parseInt(preferences.getString("y_buf", "0"));
+	        unitString = preferences.getString("units", "ft/s");
+	        String[] units = getResources().getStringArray(R.array.units);	        
+	        useFPS = unitString.equals(units[0]);
+
+	        if(unitLabel != null){
+	        	unitLabel.setText(useFPS ? units[0] : units[1]);
+	        }
+	        
+	        
+	        //if(!useFPS){
+	        //	l.removeView(mSpeedometer);	       
+	        //	LayoutParams lp = new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT);
+	        //	mSpeedometer = new GaugeView(this,null,R.style.MPH_Speedometer);
+	        //	l.addView(mSpeedometer);
+	        //}
+	        //else
+	        //{
+	        //	l.removeView(mSpeedometer);	       
+	        //	LayoutParams lp = new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT);
+	        //	mSpeedometer = new GaugeView(this,null,R.style.MPH_Speedometer);
+	        //	l.addView(mSpeedometer);
+	        //}
+	        
+	    }
+	    
+	    
 	  }
 	  
 	protected void onDestroy(){
@@ -408,35 +528,88 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnSeekB
 		
 	}
 
-	public void onProgressChanged(SeekBar seekBar, int progress,
-			boolean fromUser) {
-		String pref = null;
-		switch(seekBar.getId()){
-			case id.z_buff:
-				pref = "z_buf";
-				break;
-			case id.y_buff:
-				pref = "y_buf";
-				break;
-			case id.z_max:
-				pref = "z_max";
-				break;
-			case id.y_max:
-				pref = "y_max";
-				break;
-			default:
-				return;
+	public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+		if(buttonView.getId() == R.id.right_sig){
+			if(isChecked){
+				packetStruct.aux |= 0x01;			
+			}
+			else{
+				packetStruct.aux &= 0xFE;
+			}
 		}
-		preferences.edit().putInt(pref, progress).commit();
-	}
-
-	public void onStartTrackingTouch(SeekBar seekBar) {
-		// TODO Auto-generated method stub
+		else if(buttonView.getId() == R.id.left_sig){
+			if(isChecked){
+				packetStruct.aux |= 0x02;			
+			}
+			else{
+				packetStruct.aux &= 0xFD;
+			}
+		}
+		else if(buttonView.getId() == R.id.stereo_select){
+			if(isChecked){
+				packetStruct.aux |= 0x80;
+			}
+			else
+			{
+				packetStruct.aux &= 0x7F;
+			}
+		}
 		
 	}
+	
+	public double toFPS(int microsecondPeriod){
+		double temp = microsecondPeriod / 1000000.0;
+		return  0.669959 / temp;
+	}
+	
+	public double toMPH(int microsecondPeriod){
+		double temp = microsecondPeriod / 1000000.0; // to seconds
+		return 0.4567896 / temp; ////((3500* miles/rev) over seconds )
+	}
+	
+	public double toFeet(int revolutions)
+	{
+		return 0.669959 * revolutions;
+	}
+	
+	public double toMiles(int revolutions){
+		return revolutions * 0.000126886;
+	}
+	
+	public void updateOdometry() {
+		mHandler.post(new Runnable() {
+			
+			
 
-	public void onStopTrackingTouch(SeekBar seekBar) {
-		// TODO Auto-generated method stub
+
+			public void run() {
+				double temp;
+				 if(useFPS){
+					 temp = toFPS(period);
+				 }
+				 else{
+					 temp = toMPH(period);
+				 }
+				
+				if(mSpeedometer != null && enabled){
+
+					mSpeedometer.setTargetValue((float)temp);
+				}
+				else
+				{
+					mSpeedometer.setTargetValue((float)0.0);
+				}
+			}
+		});
+	}
+
+	public void onClick(View v) {
+		if(v.getId() == R.id.btnPrev){
+			packetStruct.aux |= 0x20;
+		}
+		else if(v.getId() == R.id.btnNext){
+			packetStruct.aux |= 0x40;
+		}
 		
 	}
 	

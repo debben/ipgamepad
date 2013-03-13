@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:gauge="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_gravity="fill_horizontal"
     android:orientation="vertical"
-     >
+    style = "@android:style/Theme.NoTitleBar" >
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -25,54 +24,38 @@
                 android:layout_weight="1"
                 android:orientation="vertical" >
 
-                <org.codeandmagic.android.gauge.GaugeView
-                    android:id="@+id/tachometer"
+                <ImageView
+                    android:id="@+id/imageView1"
                     android:layout_width="fill_parent"
                     android:layout_height="fill_parent"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_weight="10" 
-                    GaugeView_scaleStartValue="-100"
-                    GaugeView_scaleEndValue="100"/>                
+                    android:layout_weight="10"
+                    android:src="@drawable/joy_back" />
 
                 <TextView
-                android:id="@+id/textView4"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical|center_horizontal"
-                android:layout_weight="1"
-                android:text="Throttle %" />
+                    android:id="@+id/textView4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="TextView" />
 
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/speedometer_layout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-
                 android:orientation="vertical" >
 
-                <org.codeandmagic.android.gauge.GaugeView
-                    style="@style/FPS_Speedometer"
-                    android:id="@+id/speedometer"
-                    android:layout_width="fill_parent"
-                    android:layout_height="fill_parent"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_weight="10"                  
-					/>
-                
                 <TextView
-                android:id="@+id/unitLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical|center_horizontal"
-                android:layout_weight="1"
-                android:text="Speed" />
-                
+                    android:id="@+id/textView2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Medium Text"
+                    android:textAppearance="?android:attr/textAppearanceMedium" />
+
             </LinearLayout>
 
         </LinearLayout>
-
 
     </LinearLayout>
 
@@ -84,33 +67,22 @@
         android:orientation="horizontal" >
 
         <ToggleButton
-            android:id="@+id/left_sig"
+            android:id="@+id/toggleButton1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="left"
             android:layout_weight="0"
+            android:text="Left"
             android:textOff="@string/LEFT"
             android:textOn="@string/LEFT" />
 
-                <LinearLayout
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:layout_weight="1" 
+            android:layout_weight="1"
             android:gravity="center_vertical|center_horizontal" >
 
             <Button
-                android:id="@+id/btnNext"
-                style="?android:attr/buttonStyleSmall"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Next" />
-			<Switch
-                android:id="@+id/stereo_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical|center_horizontal"
-                android:text="Stereo" />
-			<Button
                 android:id="@+id/btnPrev"
                 style="?android:attr/buttonStyleSmall"
                 android:layout_width="wrap_content"
@@ -118,15 +90,29 @@
                 android:layout_gravity="center_vertical|center_horizontal"
                 android:text="Prev" />
 
+            <Switch
+                android:id="@+id/stereo_select"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical|center_horizontal"
+                android:text="Stereo" />
+
+            <Button
+                android:id="@+id/btnNext"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Next" />
 
         </LinearLayout>
 
         <ToggleButton
-            android:id="@+id/right_sig"
+            android:id="@+id/toggleButton2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="right"
             android:layout_weight="0"
+            android:text="Right"
             android:textOff="@string/RIGHT"
             android:textOn="@string/RIGHT" />
 

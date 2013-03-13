@@ -1,6 +1,9 @@
 package com.ebarch.ipgamepad;
 
+import java.io.IOException;
 import java.net.DatagramPacket;
+
+import android.util.Log;
 
 /* The main networking thread that sends the joystick UDP packets */
 class NetworkingThread extends Thread {
@@ -48,6 +51,8 @@ class NetworkingThread extends Thread {
 					}
 					catch (InterruptedException e) {}
 	    		}
+            	
+
             }
     }
 

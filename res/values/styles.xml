@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources >
+    <style name="FPS_Speedometer" >
+        <item name="scaleStartValue">0.0</item>
+        <item name="scaleEndValue">20.0</item>  
+		<item name="divisions">5</item>
+        <item name="subdivisions">4</item>
+        <item name="showScale">true</item>
+    </style>
+    
+    <style name="MPH_Speedometer" >
+        <item name="scaleStartValue">0.0</item>
+        <item name="scaleEndValue">12.0</item>  
+		<item name="divisions">6</item>
+        <item name="subdivisions">2</item>
+        <item name="showScale">true</item>
+    </style>
+</resources>

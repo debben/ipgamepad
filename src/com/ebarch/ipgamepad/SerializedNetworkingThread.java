@@ -1,6 +1,11 @@
 package com.ebarch.ipgamepad;
 
+import java.io.IOException;
 import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+import android.util.Log;
 
 public class SerializedNetworkingThread extends NetworkingThread {
 
@@ -42,6 +47,23 @@ public class SerializedNetworkingThread extends NetworkingThread {
 				}
 				catch (InterruptedException e) {}
     		}
+        	byte[] buf = new byte[256];
+        	DatagramPacket packet = new DatagramPacket(buf, buf.length);
+        	try {
+				this.ipGamepad.udpSocket.receive(packet);
+				ByteBuffer bb = ByteBuffer.wrap(buf);
+				//let's do some handling.
+				bb.order(ByteOrder.LITTLE_ENDIAN);
+				this.ipGamepad.odometer = bb.getInt();
+				this.ipGamepad.period = bb.getInt();
+				
+				this.ipGamepad.updateOdometry();
+				//let's log the output of this packet
+				
+				
+			} catch (IOException e) {
+				//Log.i(DriverPad.LOG, e.getMessage());
+			}
         }
 	}
 
