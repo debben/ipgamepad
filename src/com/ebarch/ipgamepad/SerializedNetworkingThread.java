@@ -13,6 +13,7 @@ public class SerializedNetworkingThread extends NetworkingThread {
 		super(driverPad);
 	}
 	
+	byte[] buf = new byte[10];
 	@Override
 	public void run() {
         while (!stop) {
@@ -47,7 +48,7 @@ public class SerializedNetworkingThread extends NetworkingThread {
 				}
 				catch (InterruptedException e) {}
     		}
-        	byte[] buf = new byte[256];
+        	
         	DatagramPacket packet = new DatagramPacket(buf, buf.length);
         	try {
 				this.ipGamepad.udpSocket.receive(packet);

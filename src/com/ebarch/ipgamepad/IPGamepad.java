@@ -75,7 +75,7 @@ public class IPGamepad extends Activity {
 			port = Integer.parseInt(preferences.getString("port", "4444"));
 			packetRate = Integer.parseInt(preferences.getString("txinterval", "20"));			
 			try {
-				udpSocket = new DatagramSocket(port);
+				udpSocket = new DatagramSocket();
 				udpSocket.setSoTimeout(packetRate);
 			} catch (SocketException e) {
 				// TODO Auto-generated catch block
@@ -138,6 +138,7 @@ public class IPGamepad extends Activity {
 	public int odometer;
 
 	public int period;
+	private RecieveThread recieveThread;
     
     static byte mapJoystick(int input) {
     	int result = (int)mapValue((double)input, -150, 150, 0, 255);
@@ -158,8 +159,9 @@ public class IPGamepad extends Activity {
     public synchronized void startNetworkingThread(){
         if(networkThread == null){       
                 networkThread = new NetworkingThread(this);
-                networkThread.start();
+                networkThread.start();                
         }
+        
     }
     
     /* Call this to stop the main networking thread */

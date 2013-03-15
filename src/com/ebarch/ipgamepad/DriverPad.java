@@ -3,7 +3,7 @@ package com.ebarch.ipgamepad;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.DatagramSocket;
+import java.text.DecimalFormat;
 import java.util.BitSet;
 
 import org.codeandmagic.android.gauge.GaugeView;
@@ -11,7 +11,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.MobileAnarchy.Android.Widgets.Joystick.DualJoystickView;
 import com.ebarch.ipgamepad.R.id;
 import com.ebarch.ipgamepad.R.layout;
 
@@ -30,12 +29,9 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.Parcel;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -43,11 +39,6 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.LinearLayout.LayoutParams;
-import android.widget.ProgressBar;
-import android.widget.SeekBar;
-import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -238,17 +229,16 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 			}
 			if(cruise > 0){
 				//for now, just make this a throttle set-point.
-				packetStruct.throttle = cruise;
+				packetStruct.aux |= 0x10;
 				
 			}
-			
+			else{
+				packetStruct.aux &= 0xEF;
+			}
 
-			if(mTachometer != null){
-				
-				
+			if(mTachometer != null){						
 				mTachometer.setTargetValue(packetStruct.throttle/10);
 			}
-									
 		}
 	};
 	
@@ -275,6 +265,21 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 		else if(item.getItemId() == id.toggle_enable){
 			enabled = !enabled;
 
+		}
+		else if(item.getItemId() == id.odom_view){
+			//period
+			double temp;
+			if(useFPS){
+				temp = toFeet(odometer);
+			}
+			else{
+				temp = toMiles(odometer);
+			}
+			
+			DecimalFormat d = new DecimalFormat("#.##");
+			String msg = String.format("Odometer reads: %s %s", d.format(temp), useFPS ? "feet" : "miles");
+			
+			Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
 		}
 		return true;
 	}
@@ -599,16 +604,19 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 				{
 					mSpeedometer.setTargetValue((float)0.0);
 				}
+				//if(unitLabel != null){
+				//	unitLabel.setText(Integer.toString(period));
+				//}
 			}
 		});
 	}
 
 	public void onClick(View v) {
 		if(v.getId() == R.id.btnPrev){
-			packetStruct.aux |= 0x20;
+			packetStruct.aux |= 0x40;
 		}
 		else if(v.getId() == R.id.btnNext){
-			packetStruct.aux |= 0x40;
+			packetStruct.aux |= 0x20;
 		}
 		
 	}

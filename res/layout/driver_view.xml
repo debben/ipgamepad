@@ -98,12 +98,14 @@
             android:layout_weight="1" 
             android:gravity="center_vertical|center_horizontal" >
 
-            <Button
-                android:id="@+id/btnNext"
+            
+			<Button
+                android:id="@+id/btnPrev"
                 style="?android:attr/buttonStyleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Next" />
+                android:layout_gravity="center_vertical|center_horizontal"
+                android:text="Prev" />                    
 			<Switch
                 android:id="@+id/stereo_select"
                 android:layout_width="wrap_content"
@@ -111,12 +113,12 @@
                 android:layout_gravity="center_vertical|center_horizontal"
                 android:text="Stereo" />
 			<Button
-                android:id="@+id/btnPrev"
+                android:id="@+id/btnNext"
                 style="?android:attr/buttonStyleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical|center_horizontal"
-                android:text="Prev" />
+                android:text="Next" />
+			
 
 
         </LinearLayout>
