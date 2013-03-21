@@ -138,7 +138,7 @@ public class IPGamepad extends Activity {
 	public int odometer;
 
 	public int period;
-	private RecieveThread recieveThread;
+
     
     static byte mapJoystick(int input) {
     	int result = (int)mapValue((double)input, -150, 150, 0, 255);

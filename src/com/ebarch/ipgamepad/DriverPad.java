@@ -47,6 +47,8 @@ import android.widget.ToggleButton;
 import android.os.PowerManager;
 
 public class DriverPad extends IPGamepad implements SensorEventListener, OnCheckedChangeListener, android.view.View.OnClickListener {
+	protected static final long SIG_TIME_LIMIT = 2000;
+	protected static final int THROTTLE_CAP = 500;
 	private Handler mHandler = new Handler(); 
 	private SensorManager mSensorManager;
 	
@@ -78,6 +80,8 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 	
 	private PowerManager pm;
 	private PowerManager.WakeLock wl;
+	
+	private long turnTime = 0;
 	
     public void onCreate(Bundle savedInstanceState) 
     {
@@ -116,7 +120,7 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
         next.setOnClickListener(this);
         
         
-        zmax = Integer.parseInt(preferences.getString("z_max", "1000"));
+        zmax = Integer.parseInt(preferences.getString("z_max", Integer.toString(THROTTLE_CAP)));
         ymax = Integer.parseInt(preferences.getString("y_max", "1000"));
         zbuf = Integer.parseInt(preferences.getString("z_buf", "0"));
         ybuf = Integer.parseInt(preferences.getString("y_buf", "0"));
@@ -170,19 +174,21 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
     
 	  Runnable updateUI = new Runnable() {
 			
+		
+
 		public void run() {
 			//acc_x.setText("x: " + ((int) (100 * gravity[0])));
 			//acc_y.setText("y: " + (int) (100 * gravity[1]));
 			//acc_z.setText("z: " + (int) (100 * gravity[2]));
 			
-			packetStruct.throttle = (int) (100 * gravity[2]);
+			packetStruct.throttle = (int) ((THROTTLE_CAP/10) * gravity[2]);
 			packetStruct.steering = (int) (100 * gravity[1]);
 			
 			if(packetStruct.throttle <= zbuf && packetStruct.throttle >= 0-zbuf){
 				packetStruct.throttle =0;
 			}
 			else if(packetStruct.throttle >= zmax || packetStruct.throttle <= 0-zmax){
-				packetStruct.throttle = (packetStruct.throttle < 0 ? -1000 : 1000);
+				packetStruct.throttle = (packetStruct.throttle < 0 ? -THROTTLE_CAP : THROTTLE_CAP);
 			}
 			else //scale
 			{
@@ -193,8 +199,8 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 				else{
 					temp = packetStruct.throttle + zbuf;
 				}
-				temp *= zmax - zbuf;
-				temp /= 1000;
+				temp *= THROTTLE_CAP;
+				temp /= zmax - zbuf;
 				packetStruct.throttle = temp;
 
 			}
@@ -217,8 +223,8 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 				else{
 					temp = packetStruct.steering + ybuf;
 				}
-				temp *= ymax - ybuf;
-				temp /= 1000;
+				temp *= 1000;
+				temp /= ymax - ybuf;
 				packetStruct.steering = temp;
 			}
 			
@@ -236,6 +242,20 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 				packetStruct.aux &= 0xEF;
 			}
 
+			//left turn
+			if(packetStruct.steering < -500){
+				mLeftSig.setChecked(false);
+			}
+			if(packetStruct.steering > 500){
+				mRightSig.setChecked(false);
+			}
+			
+			if(turnTime != 0 && (System.currentTimeMillis() - turnTime) >= SIG_TIME_LIMIT)
+			{
+				mLeftSig.setChecked(false);
+				mRightSig.setChecked(false);
+			}
+			
 			if(mTachometer != null){						
 				mTachometer.setTargetValue(packetStruct.throttle/10);
 			}
@@ -481,8 +501,8 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 			cruise=0;
 		}
 		//post a toast message about it.
-		//Toast t = Toast.makeText(getApplicationContext(), "Cruise changed to " + cruise + " " + unitString, Toast.LENGTH_SHORT);
-		//t.show();		
+		Toast t = Toast.makeText(getApplicationContext(), "Cruise control set!", Toast.LENGTH_SHORT);
+		t.show();		
 	}
 
 	@Override
@@ -535,16 +555,26 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 
 	public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 		if(buttonView.getId() == R.id.right_sig){
+			if(mLeftSig.isChecked()){
+				mRightSig.setChecked(false);
+				return;
+			}
 			if(isChecked){
-				packetStruct.aux |= 0x01;			
+				packetStruct.aux |= 0x01;
+				turnTime = System.currentTimeMillis();
 			}
 			else{
 				packetStruct.aux &= 0xFE;
 			}
-		}
+		}		
 		else if(buttonView.getId() == R.id.left_sig){
+			if(mRightSig.isChecked()){
+				mLeftSig.setChecked(false);
+				return;
+			}
 			if(isChecked){
-				packetStruct.aux |= 0x02;			
+				packetStruct.aux |= 0x02;
+				turnTime = System.currentTimeMillis();
 			}
 			else{
 				packetStruct.aux &= 0xFD;
@@ -558,7 +588,7 @@ public class DriverPad extends IPGamepad implements SensorEventListener, OnCheck
 			{
 				packetStruct.aux &= 0x7F;
 			}
-		}
+		}		
 		
 	}
 	
